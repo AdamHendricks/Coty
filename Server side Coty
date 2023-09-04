@@ -1,0 +1,98 @@
+
+package za.ac.cput.tut2a_221024034;
+
+
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.ArrayList;
+import javax.swing.JComboBox;
+import javax.swing.JOptionPane;
+
+public class CotyServer {
+    private static ObjectOutputStream out;
+    private static ObjectInputStream in;
+    private static ServerSocket serverSocket;
+    private static Socket clientSocket;
+    private static Object receivedObject;
+
+//complete the constructor by accepting connection from a client    
+public CotyServer(){
+    try{
+    serverSocket = new ServerSocket(12345, 1);
+        System.out.println("Server is listening...");
+    clientSocket = serverSocket.accept();
+        System.out.println(clientSocket.getInetAddress() + " has connected");
+    getStreams();
+    processClient();
+    }catch(IOException ioe){
+        System.out.println(ioe.getMessage());
+    }
+}
+
+//complete the method to set up the IO streams
+public void getStreams() throws IOException{
+    out = new ObjectOutputStream(clientSocket.getOutputStream());
+        out.flush();
+        in = new ObjectInputStream(clientSocket.getInputStream());
+}
+
+//complete the method to handle the requests from the client
+    public void processClient() {
+        ArrayList<VotingPoll> votingRecords = new ArrayList<>();
+        votingRecords.add(new VotingPoll("Ford Ranger", 0));
+        votingRecords.add(new VotingPoll("Audi A3", 0));
+        votingRecords.add(new VotingPoll("BMW X3", 0));
+        votingRecords.add(new VotingPoll("Toyota Starlet", 0));
+        votingRecords.add(new VotingPoll("Suzuki Swift", 0));
+        ArrayList<VotingPoll> lstVotingResults;
+        String arrayAsString;
+            while (true) {
+                try{
+                    receivedObject = in.readObject();
+                    if(receivedObject instanceof String && ((String)receivedObject).equals("exit")){
+                        closeConnection();
+                    }
+                    else if(receivedObject instanceof String && ((String)receivedObject).equals("retrieve")){
+                        arrayAsString = votingRecords.toString();       //converting array list to string. Will be sent to the client as a string
+                        System.out.println("Array as String: " + arrayAsString);
+                        out.writeObject(arrayAsString);
+                        out.flush();
+                        System.out.println("List has been sent");
+                    }else{
+                        for(int i = 0; i < votingRecords.size(); i++){
+                            if(votingRecords.get(i).getVehicleFinalist().equals(receivedObject)){
+                                votingRecords.get(i).increaseNumberOfVotes();
+                                System.out.println("Vote has been received");
+                                break;
+                            }
+                        }
+                    }
+                }catch(IOException ioe){
+                    JOptionPane.showMessageDialog(null, ioe.getMessage());
+                }catch(ClassNotFoundException cnf){
+                    JOptionPane.showMessageDialog(null, cnf.getMessage());
+            }
+            }//end while
+    }//end processClient
+
+//    complete the method to close connections to the client
+    private static void closeConnection() {
+        try{
+            out.writeObject("Connection has now been closed");
+            out.flush();
+            out.close();
+            in.close();
+            clientSocket.close();
+            System.exit(0);
+        }catch(IOException ioe){
+            System.out.println("IOException at closeStreams in server class: " + ioe.getMessage());
+        }
+    }
+    
+    public static void main(String[] args) {
+        CotyServer server = new CotyServer();
+    }
+    }
